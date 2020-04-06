@@ -1,0 +1,4 @@
+host *.internal
+  User ec2-user
+  IdentityFile ~/.ssh/e6b9key.pem
+  StrickHostKeyChecking=no

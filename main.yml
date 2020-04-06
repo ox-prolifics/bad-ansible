@@ -15,6 +15,8 @@
 
 - name: configuration
   hosts: all
+#  set_fact:
+#    guid: "{{ lookup('env', 'GUID') }}" 
   gather_facts: false # remove later! speeds up testing
   become: true
 
@@ -37,7 +39,8 @@
       state: latest
   - name: install HAProxy
     yum:
-      name=haproxy state=latest
+      name: haproxy 
+      state: latest
   - name: enable HAProxy
     service:
       name: haproxy
@@ -70,6 +73,11 @@
   - name: create ansible tomcat directory
     file:
       path: /usr/share/tomcat/webapps/ROOT
+      state: directory
+
+  - name: create /usr/share/tomcat/webapps/ansible
+    file:
+      path: /usr/share/tomcat/webapps/ansible
       state: directory
 
   - name: copy static index.html to tomcat webapps/ansible/index.html
@@ -106,31 +114,38 @@
       dest: /usr/share/tomcat/webapps/ansible/index.html
 
 - name: deploy postgres
-  hosts: apps
+  hosts: appdbs
+#  hosts: apps
   gather_facts: false
   become: true
-  hosts: appdbs
   tasks:
-  - name: install progress
-    command: "yum install -y postgresql-server"
+#  - name: install progress
+#    command: "yum install -y postgresql-server"
 
-  #- name: install postgres
-  #  yum:
-  #    name: postgresql-server
-  #    state: latest
+  - name: install postgres
+    yum:
+      name: postgresql-server
+      state: latest
   - name: enable apache at boot
     service:
       name: postgresql
       enabled: yes
-  - name: tell user to finish setting up postgres
-    debug:
-      msg: "Either uncomment the postgres setup or manually login and initialize"
+#  - name: tell user to finish setting up postgres
+#    debug:
+#      msg: "Either uncomment the postgres setup or manually login and initialize"
 
  # only run the next 2 tasks once!
-#  - name: initilize postgres
-#    command: postgresql-setup initdb
-#  - name: initilize postgres some more
-#    command: chkconfig postgresql on
+  - name: initilize postgres
+    command: postgresql-setup initdb
+    register: r_postgres_init
+    failed_when: >-
+      r_postgres_init.rc != 0 and
+      'Data directory is not empty!' not in r_postgres_init.stdout
+#    args:
+#      creates: /path/to/database
+
+  - name: initilize postgres some more
+    command: chkconfig postgresql on
   - name: start postgres
     service:
       name: postgresql.service
@@ -138,9 +153,9 @@
 
 - name: deploy apache
   hosts: apps
+#  hosts: apps
   gather_facts: false
   become: true
-  hosts: apps
   tasks:
   - name: install apache
     yum:
